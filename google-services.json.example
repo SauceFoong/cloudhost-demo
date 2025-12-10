@@ -1,0 +1,32 @@
+{
+  "_comment": "REPLACE THIS FILE with your actual google-services.json from Firebase Console",
+  "_instructions": [
+    "1. Go to Firebase Console: https://console.firebase.google.com/",
+    "2. Select your project (or create one)",
+    "3. Click the Android icon to add an Android app",
+    "4. Use package name: com.cloudhost.demo",
+    "5. Download google-services.json",
+    "6. Replace this file with the downloaded one (remove .example extension)"
+  ],
+  "project_info": {
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_PROJECT_ID.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "YOUR_MOBILE_SDK_APP_ID",
+        "android_client_info": {
+          "package_name": "com.cloudhost.demo"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "YOUR_API_KEY"
+        }
+      ]
+    }
+  ]
+}
+
