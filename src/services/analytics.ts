@@ -9,8 +9,8 @@ import * as Crypto from 'expo-crypto';
  * Fires events to Firebase Analytics, Meta (Facebook) SDK, and AppsFlyer
  * 
  * Events:
- * 1. app_install - First app launch
- * 2. user_sign_up - User registration (with hashed email)
+ * 1. app_install - First app launch (hashed_email)
+ * 2. user_sign_up - User registration (hashed_email)
  * 3. deposit - Fund deposit (value, currency, hashed_email)
  * 4. create_instance - Server instance creation (product_id, hashed_email)
  */
@@ -96,9 +96,19 @@ export const AnalyticsEvents = {
   /**
    * Event 1: app_install
    * Fired on first app launch after installation
+   * @param email - Optional: User's email (if available, will be hashed)
    */
-  logAppInstall: async (): Promise<void> => {
-    await logToAllPlatforms('app_install');
+  logAppInstall: async (email?: string): Promise<void> => {
+    let hashedEmail = currentHashedEmail;
+    
+    // If email provided, hash it; otherwise use stored hash
+    if (email) {
+      hashedEmail = await hashEmailSHA256(email);
+    }
+    
+    await logToAllPlatforms('app_install', {
+      ...(hashedEmail && { hashed_email: hashedEmail }),
+    });
   },
 
   /**

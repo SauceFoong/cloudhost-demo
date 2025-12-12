@@ -505,9 +505,17 @@ const logToAllPlatforms = async (
 };
 
 export const AnalyticsEvents = {
-  // Event 1: app_install - First app launch
-  logAppInstall: async (): Promise<void> => {
-    await logToAllPlatforms('app_install');
+  // Event 1: app_install - First app launch (with optional hashed email)
+  logAppInstall: async (email?: string): Promise<void> => {
+    let hashedEmail = currentHashedEmail;
+    
+    if (email) {
+      hashedEmail = await hashEmailSHA256(email);
+    }
+    
+    await logToAllPlatforms('app_install', {
+      ...(hashedEmail && { hashed_email: hashedEmail }),
+    });
   },
 
   // Event 2: user_sign_up - User registration (with hashed email)
@@ -780,9 +788,13 @@ npx expo start --dev-client
 **Payload:**
 ```json
 {
-  // No parameters
+  "hashed_email": "a1b2c3d4e5f6g7h8"    // String - SHA-256 hashed user email (optional)
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `hashed_email` | `string` | Optional | SHA-256 hash of user's email (if available at install time) |
 
 **Code Example:**
 ```typescript
@@ -791,7 +803,12 @@ import { AnalyticsEvents } from './src/services/analytics';
 // Check if first launch
 const isFirstLaunch = await AsyncStorage.getItem('hasLaunched');
 if (!isFirstLaunch) {
+  // Without email (if user hasn't signed up yet)
   await AnalyticsEvents.logAppInstall();
+  
+  // Or with email (if available, e.g., from deep link or previous session)
+  // await AnalyticsEvents.logAppInstall('user@example.com');
+  
   await AsyncStorage.setItem('hasLaunched', 'true');
 }
 ```
@@ -956,7 +973,7 @@ const WelcomeScreen = () => {
 
 | Event Name | Description | Parameters | Example Payload |
 |------------|-------------|------------|-----------------|
-| `app_install` | First app launch | None | `{}` |
+| `app_install` | First app launch | `hashed_email` (optional) | `{ "hashed_email": "a1b2c3d4e5f6g7h8" }` |
 | `user_sign_up` | User registration | `hashed_email` | `{ "hashed_email": "a1b2c3d4e5f6g7h8" }` |
 | `deposit` | User deposit | `value`, `currency`, `hashed_email` | `{ "value": 100, "currency": "USD", "hashed_email": "a1b2c3d4e5f6g7h8" }` |
 | `create_instance` | Server creation | `product_id`, `hashed_email` | `{ "product_id": "prod_standard_002", "hashed_email": "a1b2c3d4e5f6g7h8" }` |

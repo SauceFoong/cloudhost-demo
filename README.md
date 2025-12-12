@@ -27,7 +27,7 @@ Events are fired to **Firebase Analytics**, **Meta SDK**, and **AppsFlyer**:
 
 | Event | Parameters | Description |
 |-------|------------|-------------|
-| `app_install` | - | First app launch |
+| `app_install` | `hashed_email` (optional) | First app launch |
 | `user_sign_up` | `hashed_email` | User registration |
 | `deposit` | `value`, `currency`, `hashed_email` | Fund deposit |
 | `create_instance` | `product_id`, `hashed_email` | Server instance creation |
@@ -106,9 +106,10 @@ npx expo run:android
 import { AnalyticsEvents } from './src/services/analytics';
 
 // All events fire to Firebase, Meta, and AppsFlyer
-await AnalyticsEvents.logAppInstall();
-await AnalyticsEvents.logUserSignUp('user@example.com'); // Email is SHA-256 hashed
-await AnalyticsEvents.logDeposit(100, 'USD');
+await AnalyticsEvents.logAppInstall();                    // Without email
+await AnalyticsEvents.logAppInstall('user@example.com');  // With email (hashed)
+await AnalyticsEvents.logUserSignUp('user@example.com');  // Email is SHA-256 hashed
+await AnalyticsEvents.logDeposit(100, 'USD');             // Uses stored hashed email
 await AnalyticsEvents.logCreateInstance('prod_standard_002');
 
 // Screen views (use with useFocusEffect for tabs)
