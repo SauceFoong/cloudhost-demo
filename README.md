@@ -32,6 +32,8 @@ Events are fired to **Firebase Analytics**, **Meta SDK**, and **AppsFlyer**:
 | `deposit` | `value`, `currency`, `hashed_email` | Fund deposit |
 | `create_instance` | `product_id`, `hashed_email` | Server instance creation |
 | `screen_view` | `screen_name` | Screen navigation |
+| `deep_link_opened` | `deep_link_value`, `media_source`, `campaign` | Existing user opens via deep link |
+| `deferred_deep_link` | `deep_link_value`, `media_source`, `campaign` | New user installs from link, then opens |
 
 ## Setup
 
@@ -114,7 +116,24 @@ await AnalyticsEvents.logCreateInstance('prod_standard_002');
 
 // Screen views (use with useFocusEffect for tabs)
 await AnalyticsEvents.logScreenView('Home');
+
+// Deep link events (automatically fired in App.tsx)
+await AnalyticsEvents.logDeepLinkOpened({ deep_link_value: 'promo', media_source: 'facebook' });
+await AnalyticsEvents.logDeferredDeepLink({ deep_link_value: 'promo', media_source: 'facebook' });
 ```
+
+## Deep Link Events
+
+Deep link events are **automatically fired** in `App.tsx` when AppsFlyer detects a deep link:
+
+| Event | When Fired |
+|-------|------------|
+| `deep_link_opened` | Existing user (app installed) clicks a deep link |
+| `deferred_deep_link` | New user installs app after clicking a link, then opens |
+
+This helps track:
+- **Re-engagement campaigns** (existing users clicking ads)
+- **Acquisition campaigns** (new users installing from ads)
 
 ## Screen View Tracking
 

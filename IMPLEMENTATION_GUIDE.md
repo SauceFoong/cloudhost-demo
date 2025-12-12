@@ -612,6 +612,32 @@ export const AnalyticsEvents = {
       console.error('[AppsFlyer] Error logging screen view:', error);
     }
   },
+
+  // Event: deep_link_opened - Existing user opens via deep link
+  logDeepLinkOpened: async (params: {
+    deep_link_value?: string;
+    media_source?: string;
+    campaign?: string;
+  }): Promise<void> => {
+    await logToAllPlatforms('deep_link_opened', {
+      deep_link_value: params.deep_link_value || 'unknown',
+      media_source: params.media_source || 'direct',
+      campaign: params.campaign || null,
+    });
+  },
+
+  // Event: deferred_deep_link - New user installs after clicking link
+  logDeferredDeepLink: async (params: {
+    deep_link_value?: string;
+    media_source?: string;
+    campaign?: string;
+  }): Promise<void> => {
+    await logToAllPlatforms('deferred_deep_link', {
+      deep_link_value: params.deep_link_value || 'unknown',
+      media_source: params.media_source || 'direct',
+      campaign: params.campaign || null,
+    });
+  },
 };
 
 export default AnalyticsEvents;
@@ -632,6 +658,7 @@ import { requestTrackingPermissionsAsync, getTrackingPermissionsAsync } from 'ex
 import { Settings } from 'react-native-fbsdk-next';
 import appsFlyer from 'react-native-appsflyer';
 import AppNavigator from './src/navigation/AppNavigator';
+import { AnalyticsEvents } from './src/services/analytics';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -688,8 +715,21 @@ export default function App() {
 
       appsFlyer.onDeepLink((result) => {
         console.log('[AppsFlyer] Deep Link:', JSON.stringify(result));
+        
         if (result?.deepLinkStatus === 'FOUND') {
-          // Handle deep link navigation
+          const params = {
+            deep_link_value: result?.data?.deep_link_value,
+            media_source: result?.data?.media_source,
+            campaign: result?.data?.campaign,
+          };
+          
+          if (result?.isDeferred) {
+            // NEW user: installed app after clicking link
+            AnalyticsEvents.logDeferredDeepLink(params);
+          } else {
+            // EXISTING user: app was already installed
+            AnalyticsEvents.logDeepLinkOpened(params);
+          }
         }
       });
 
@@ -1012,6 +1052,89 @@ const WelcomeScreen = () => {
 
 ---
 
+### Event 6: `deep_link_opened`
+
+**Description:** Fired when an **existing user** (app already installed) opens the app via a deep link.
+
+**When to Fire:** Automatically fired in `App.tsx` when AppsFlyer detects a non-deferred deep link.
+
+**Payload:**
+```json
+{
+  "deep_link_value": "promo",           // String - The deep link destination
+  "media_source": "facebook",           // String - Where the link came from
+  "campaign": "summer_sale"             // String - Campaign name (if from paid ads)
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `deep_link_value` | `string` | Yes | The deep link value/destination (e.g., `promo`, `product_123`) |
+| `media_source` | `string` | Yes | Source of the link (e.g., `facebook`, `email`, `direct`) |
+| `campaign` | `string` | Optional | Campaign name if from paid advertising |
+
+**Code Example:**
+```typescript
+// This is automatically called in App.tsx onDeepLink listener
+// You don't need to call this manually
+
+// In App.tsx:
+appsFlyer.onDeepLink((result) => {
+  if (result?.deepLinkStatus === 'FOUND' && !result?.isDeferred) {
+    AnalyticsEvents.logDeepLinkOpened({
+      deep_link_value: result?.data?.deep_link_value,
+      media_source: result?.data?.media_source,
+      campaign: result?.data?.campaign,
+    });
+  }
+});
+```
+
+---
+
+### Event 7: `deferred_deep_link`
+
+**Description:** Fired when a **new user** installs the app after clicking a deep link, then opens it for the first time.
+
+**When to Fire:** Automatically fired in `App.tsx` when AppsFlyer detects a deferred deep link (user installed app after clicking link).
+
+**Payload:**
+```json
+{
+  "deep_link_value": "promo",           // String - The deep link destination
+  "media_source": "facebook",           // String - Where the link came from
+  "campaign": "summer_sale"             // String - Campaign name (if from paid ads)
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `deep_link_value` | `string` | Yes | The deep link value/destination (e.g., `promo`, `product_123`) |
+| `media_source` | `string` | Yes | Source of the link (e.g., `facebook`, `google`, `tiktok`) |
+| `campaign` | `string` | Optional | Campaign name if from paid advertising |
+
+**Code Example:**
+```typescript
+// This is automatically called in App.tsx onDeepLink listener
+// You don't need to call this manually
+
+// In App.tsx:
+appsFlyer.onDeepLink((result) => {
+  if (result?.deepLinkStatus === 'FOUND' && result?.isDeferred) {
+    // User clicked ad → installed app → opened for first time
+    AnalyticsEvents.logDeferredDeepLink({
+      deep_link_value: result?.data?.deep_link_value,
+      media_source: result?.data?.media_source,
+      campaign: result?.data?.campaign,
+    });
+  }
+});
+```
+
+**Use Case:** Track how many new users came from specific ad campaigns or referral links.
+
+---
+
 ## Events Summary Table
 
 | Event Name | Description | Parameters | Example Payload |
@@ -1021,6 +1144,8 @@ const WelcomeScreen = () => {
 | `deposit` | User deposit | `value`, `currency`, `hashed_email` | `{ "value": 100, "currency": "USD", "hashed_email": "a1b2c3d4e5f6g7h8" }` |
 | `create_instance` | Server creation | `product_id`, `hashed_email` | `{ "product_id": "prod_standard_002", "hashed_email": "a1b2c3d4e5f6g7h8" }` |
 | `screen_view` | Screen navigation | `screen_name` | `{ "screen_name": "Welcome" }` |
+| `deep_link_opened` | Existing user opens via deep link | `deep_link_value`, `media_source`, `campaign` | `{ "deep_link_value": "promo", "media_source": "facebook" }` |
+| `deferred_deep_link` | New user installs after clicking link | `deep_link_value`, `media_source`, `campaign` | `{ "deep_link_value": "promo", "media_source": "facebook" }` |
 
 **Hashing Method:** SHA-256 (first 16 characters) - Industry standard, GDPR compliant, irreversible
 

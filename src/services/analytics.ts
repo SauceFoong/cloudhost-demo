@@ -200,6 +200,41 @@ export const AnalyticsEvents = {
       console.error('[AppsFlyer] Error logging screen view:', error);
     }
   },
+
+  /**
+   * Event: deep_link_opened
+   * Fired when an EXISTING user opens the app via a deep link
+   * @param params - Deep link parameters from AppsFlyer
+   */
+  logDeepLinkOpened: async (params: {
+    deep_link_value?: string;
+    media_source?: string;
+    campaign?: string;
+  }): Promise<void> => {
+    await logToAllPlatforms('deep_link_opened', {
+      deep_link_value: params.deep_link_value || 'unknown',
+      media_source: params.media_source || 'direct',
+      ...(params.campaign && { campaign: params.campaign }),
+    });
+  },
+
+  /**
+   * Event: deferred_deep_link
+   * Fired when a NEW user installs the app after clicking a deep link (first open)
+   * This indicates the user came from an ad/link, installed, then opened the app
+   * @param params - Deep link parameters from AppsFlyer
+   */
+  logDeferredDeepLink: async (params: {
+    deep_link_value?: string;
+    media_source?: string;
+    campaign?: string;
+  }): Promise<void> => {
+    await logToAllPlatforms('deferred_deep_link', {
+      deep_link_value: params.deep_link_value || 'unknown',
+      media_source: params.media_source || 'direct',
+      ...(params.campaign && { campaign: params.campaign }),
+    });
+  },
 };
 
 export default AnalyticsEvents;

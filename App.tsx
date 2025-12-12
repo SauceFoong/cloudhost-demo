@@ -6,6 +6,7 @@ import { requestTrackingPermissionsAsync, getTrackingPermissionsAsync } from 'ex
 import { Settings } from 'react-native-fbsdk-next';
 import appsFlyer from 'react-native-appsflyer';
 import AppNavigator from './src/navigation/AppNavigator';
+import { AnalyticsEvents } from './src/services/analytics';
 import { colors, fontSize, fontWeight, spacing } from './src/constants/theme';
 
 export default function App() {
@@ -75,9 +76,23 @@ export default function App() {
         console.log('[AppsFlyer] Deep Link received:', JSON.stringify(result));
         
         if (result?.deepLinkStatus === 'FOUND') {
-          const deepLinkValue = result?.data?.deep_link_value;
-          console.log('[AppsFlyer] Deep Link Value:', deepLinkValue);
-          // Handle navigation based on deep link value
+          const params = {
+            deep_link_value: result?.data?.deep_link_value,
+            media_source: result?.data?.media_source,
+            campaign: result?.data?.campaign,
+          };
+          
+          if (result?.isDeferred) {
+            // NEW user: installed app after clicking link (deferred deep link)
+            console.log('[AppsFlyer] Deferred Deep Link - New install from link');
+            AnalyticsEvents.logDeferredDeepLink(params);
+          } else {
+            // EXISTING user: app was already installed
+            console.log('[AppsFlyer] Regular Deep Link - Existing user');
+            AnalyticsEvents.logDeepLinkOpened(params);
+          }
+          
+          // TODO: Handle navigation based on deep_link_value
           // e.g., navigate to specific screen or show specific content
         }
       });
