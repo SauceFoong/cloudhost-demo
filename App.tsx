@@ -112,6 +112,19 @@ export default function App() {
         appsFlyerConfig,
         (result) => {
           console.log('[AppsFlyer] SDK initialized:', result);
+          
+          // Log Device UID for registering test device in AppsFlyer dashboard
+          appsFlyer.getAppsFlyerUID((err, appsFlyerUID) => {
+            if (err) {
+              console.warn('[AppsFlyer] Error getting UID:', err);
+            } else {
+              console.log('==============================================');
+              console.log('[AppsFlyer] DEVICE UID FOR TESTING:', appsFlyerUID);
+              console.log('Use this ID to register test device at:');
+              console.log('https://hq1.appsflyer.com → Configuration → Test Devices');
+              console.log('==============================================');
+            }
+          });
         },
         (error) => {
           // Log warning but don't block app - AppsFlyer may fail in dev without valid App Store ID

@@ -12,6 +12,7 @@ const {
   META_DISPLAY_NAME = 'AppCMS Demo',
   APPSFLYER_DEV_KEY = '',
   APPSFLYER_IOS_APP_ID = '',
+  APPSFLYER_ANDROID_APP_ID = '',
 } = process.env;
 
 module.exports = {
@@ -103,6 +104,7 @@ module.exports = {
       META_DISPLAY_NAME,
       APPSFLYER_DEV_KEY,
       APPSFLYER_IOS_APP_ID,
+      APPSFLYER_ANDROID_APP_ID,
       IOS_BUNDLE_ID,
       ANDROID_PACKAGE_NAME,
     },

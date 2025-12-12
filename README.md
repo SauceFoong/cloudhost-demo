@@ -65,8 +65,8 @@ META_DISPLAY_NAME=Your App Name
 
 # AppsFlyer SDK
 APPSFLYER_DEV_KEY=your_appsflyer_dev_key
-APPSFLYER_IOS_APP_ID=your_app_store_id
-APPSFLYER_ANDROID_APP_ID=your_android_app_id
+APPSFLYER_IOS_APP_ID=id123456789
+APPSFLYER_ANDROID_APP_ID=com.yourcompany.app
 ```
 
 | Variable | Description | Where to Find |
@@ -76,8 +76,8 @@ APPSFLYER_ANDROID_APP_ID=your_android_app_id
 | `META_APP_ID` | Facebook App ID | [Meta Developer Console](https://developers.facebook.com/) |
 | `META_CLIENT_TOKEN` | Facebook Client Token | Meta Console → Settings → Advanced |
 | `APPSFLYER_DEV_KEY` | AppsFlyer Dev Key | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) |
-| `APPSFLYER_IOS_APP_ID` | iOS App Store ID (numeric) | App Store Connect |
-| `APPSFLYER_ANDROID_APP_ID` | Android App ID for AppsFlyer | AppsFlyer Dashboard |
+| `APPSFLYER_IOS_APP_ID` | iOS App Store ID (format: `id123456789`) | App Store Connect |
+| `APPSFLYER_ANDROID_APP_ID` | Android Package Name | Same as `ANDROID_PACKAGE_NAME` |
 
 > ⚠️ `.env` is gitignored. Each developer needs their own copy.
 

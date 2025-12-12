@@ -9,14 +9,15 @@ This guide covers the complete integration of **Firebase Analytics**, **Meta (Fa
 1. [Configuration Values](#configuration-values)
 2. [Prerequisites](#prerequisites)
 3. [Step 1: Install Dependencies](#step-1-install-dependencies)
-4. [Step 2: iOS App Tracking Transparency (ATT)](#step-2-ios-app-tracking-transparency-att)
-5. [Step 3: Firebase Analytics Integration](#step-3-firebase-analytics-integration)
-6. [Step 4: Meta (Facebook) SDK Integration](#step-4-meta-facebook-sdk-integration)
-7. [Step 5: AppsFlyer SDK Integration](#step-5-appsflyer-sdk-integration)
-8. [Step 6: Unified Analytics Service](#step-6-unified-analytics-service)
-9. [Step 7: App Initialization](#step-7-app-initialization)
-10. [Step 8: Build and Run](#step-8-build-and-run)
-11. [Debugging](#debugging)
+4. [Step 2: Configure Environment Variables](#step-2-configure-environment-variables)
+5. [Step 3: iOS App Tracking Transparency (ATT)](#step-3-ios-app-tracking-transparency-att)
+6. [Step 4: Firebase Analytics Integration](#step-4-firebase-analytics-integration)
+7. [Step 5: Meta (Facebook) SDK Integration](#step-5-meta-facebook-sdk-integration)
+8. [Step 6: AppsFlyer SDK Integration](#step-6-appsflyer-sdk-integration)
+9. [Step 7: Unified Analytics Service](#step-7-unified-analytics-service)
+10. [Step 8: App Initialization](#step-8-app-initialization)
+11. [Step 9: Build and Run](#step-9-build-and-run)
+12. [Debugging](#debugging)
 
 ---
 
@@ -52,8 +53,8 @@ This guide covers the complete integration of **Firebase Analytics**, **Meta (Fa
 | Key | Placeholder | Example Value |
 |-----|-------------|---------------|
 | Dev Key | `{{APPSFLYER_DEV_KEY}}` | `aBcDeFgHiJkLmNoPqRsTuVwXyZ` |
-| iOS App Store ID | `{{APPSFLYER_IOS_APP_ID}}` | `id1234567890` or `1234567890` |
-| Android App ID | `{{ANDROID_PACKAGE_NAME}}` | `com.yourcompany.app` |
+| iOS App Store ID | `{{APPSFLYER_IOS_APP_ID}}` | `id1234567890` (format: `id` + numeric ID) |
+| Android App ID | `{{APPSFLYER_ANDROID_APP_ID}}` | `com.yourcompany.app` (same as package name) |
 
 ---
 
@@ -111,30 +112,141 @@ npx expo install expo-crypto
 
 ---
 
-## Step 2: iOS App Tracking Transparency (ATT)
+## Step 2: Configure Environment Variables
 
-ATT is required by Apple for apps that track users across apps and websites. This must be shown BEFORE initializing tracking SDKs.
+All SDK credentials are stored in a `.env` file for security (gitignored).
 
-### 2.1 Configure app.json
+### 2.1 Install dotenv packages
 
-Add the ATT permission description:
+```bash
+yarn add dotenv react-native-dotenv
+```
 
-```json
-{
-  "expo": {
-    "plugins": [
+### 2.2 Create .env file
+
+Copy the example file and fill in your credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+# App Identifiers
+IOS_BUNDLE_ID=com.yourcompany.app
+ANDROID_PACKAGE_NAME=com.yourcompany.app
+
+# Meta (Facebook) SDK
+META_APP_ID=your_meta_app_id
+META_CLIENT_TOKEN=your_meta_client_token
+META_DISPLAY_NAME=Your App Name
+
+# AppsFlyer SDK
+APPSFLYER_DEV_KEY=your_appsflyer_dev_key
+APPSFLYER_IOS_APP_ID=id123456789
+APPSFLYER_ANDROID_APP_ID=com.yourcompany.app
+```
+
+### 2.3 Configure Babel
+
+Update `babel.config.js`:
+
+```javascript
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
       [
-        "expo-tracking-transparency",
+        'module:react-native-dotenv',
         {
-          "userTrackingPermission": "This app uses tracking to provide personalized ads and measure ad performance."
-        }
-      ]
-    ]
-  }
+          moduleName: '@env',
+          path: '.env',
+          blacklist: null,
+          whitelist: null,
+          safe: false,
+          allowUndefined: true,
+        },
+      ],
+    ],
+  };
+};
+```
+
+### 2.4 Create TypeScript types
+
+Create `src/types/env.d.ts`:
+
+```typescript
+declare module '@env' {
+  export const IOS_BUNDLE_ID: string;
+  export const ANDROID_PACKAGE_NAME: string;
+  export const META_APP_ID: string;
+  export const META_CLIENT_TOKEN: string;
+  export const META_DISPLAY_NAME: string;
+  export const APPSFLYER_DEV_KEY: string;
+  export const APPSFLYER_IOS_APP_ID: string;
+  export const APPSFLYER_ANDROID_APP_ID: string;
 }
 ```
 
-### 2.2 Implement ATT in App.tsx
+### 2.5 Create app.config.js
+
+Convert `app.json` to `app.config.js` for dynamic configuration:
+
+```javascript
+const dotenv = require('dotenv');
+dotenv.config();
+
+const {
+  IOS_BUNDLE_ID = 'com.cloudhost.demo',
+  ANDROID_PACKAGE_NAME = 'com.cloudhost.demo',
+  META_APP_ID = '',
+  META_CLIENT_TOKEN = '',
+  META_DISPLAY_NAME = 'AppCMS Demo',
+  APPSFLYER_DEV_KEY = '',
+  APPSFLYER_IOS_APP_ID = '',
+  APPSFLYER_ANDROID_APP_ID = '',
+} = process.env;
+
+module.exports = {
+  expo: {
+    name: 'AppCMS Demo',
+    slug: 'appcms-demo',
+    // ... rest of config uses variables above
+  },
+};
+```
+
+---
+
+## Step 3: iOS App Tracking Transparency (ATT)
+
+ATT is required by Apple for apps that track users across apps and websites. This must be shown BEFORE initializing tracking SDKs.
+
+### 3.1 Configure app.config.js
+
+Add the ATT permission description in your `app.config.js`:
+
+```javascript
+// app.config.js
+module.exports = {
+  expo: {
+    plugins: [
+      [
+        'expo-tracking-transparency',
+        {
+          userTrackingPermission:
+            'This app uses tracking to provide personalized ads and measure ad performance.',
+        },
+      ],
+    ],
+  },
+};
+```
+
+### 3.2 Implement ATT in App.tsx
 
 ```typescript
 import { Platform } from 'react-native';
@@ -170,29 +282,30 @@ const initializeATT = async () => {
 
 ---
 
-## Step 3: Firebase Analytics Integration
+## Step 4: Firebase Analytics Integration
 
-### 3.1 Configure app.json
+### 4.1 Configure app.config.js
 
-```json
-{
-  "expo": {
-    "ios": {
-      "bundleIdentifier": "{{IOS_BUNDLE_ID}}",
-      "googleServicesFile": "./GoogleService-Info.plist"
+```javascript
+// app.config.js
+const { IOS_BUNDLE_ID, ANDROID_PACKAGE_NAME } = process.env;
+
+module.exports = {
+  expo: {
+    ios: {
+      bundleIdentifier: IOS_BUNDLE_ID,
+      googleServicesFile: './GoogleService-Info.plist',
     },
-    "android": {
-      "package": "{{ANDROID_PACKAGE_NAME}}",
-      "googleServicesFile": "./google-services.json"
+    android: {
+      package: ANDROID_PACKAGE_NAME,
+      googleServicesFile: './google-services.json',
     },
-    "plugins": [
-      "@react-native-firebase/app"
-    ]
-  }
-}
+    plugins: ['@react-native-firebase/app'],
+  },
+};
 ```
 
-### 3.2 Add Firebase Config Files
+### 4.2 Add Firebase Config Files
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Create/select your project
@@ -201,7 +314,7 @@ const initializeATT = async () => {
 5. Add Android app with package: `{{ANDROID_PACKAGE_NAME}}`
 6. Download `google-services.json` → place in project root
 
-### 3.3 Log Firebase Events
+### 4.3 Log Firebase Events
 
 ```typescript
 import analytics from '@react-native-firebase/analytics';
@@ -224,48 +337,51 @@ await analytics().logScreenView({
 
 ---
 
-## Step 4: Meta (Facebook) SDK Integration
+## Step 5: Meta (Facebook) SDK Integration
 
-### 4.1 Configure app.json
+### 5.1 Configure app.config.js
 
-```json
-{
-  "expo": {
-    "ios": {
-      "infoPlist": {
-        "FacebookAppID": "{{META_APP_ID}}",
-        "FacebookClientToken": "{{META_CLIENT_TOKEN}}",
-        "FacebookAutoLogAppEventsEnabled": true,
-        "FacebookAdvertiserIDCollectionEnabled": true,
-        "FacebookDisplayName": "{{META_DISPLAY_NAME}}",
-        "SKAdNetworkItems": [
-          { "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork" },
-          { "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork" }
+```javascript
+// app.config.js
+const { META_APP_ID, META_CLIENT_TOKEN, META_DISPLAY_NAME } = process.env;
+
+module.exports = {
+  expo: {
+    ios: {
+      infoPlist: {
+        FacebookAppID: META_APP_ID,
+        FacebookClientToken: META_CLIENT_TOKEN,
+        FacebookAutoLogAppEventsEnabled: true,
+        FacebookAdvertiserIDCollectionEnabled: true,
+        FacebookDisplayName: META_DISPLAY_NAME,
+        SKAdNetworkItems: [
+          { SKAdNetworkIdentifier: 'v9wttpbfk9.skadnetwork' },
+          { SKAdNetworkIdentifier: 'n38lu8286q.skadnetwork' },
         ],
-        "CFBundleURLTypes": [
+        CFBundleURLTypes: [
           {
-            "CFBundleURLSchemes": ["fb{{META_APP_ID}}"]
-          }
-        ]
-      }
+            CFBundleURLSchemes: [`fb${META_APP_ID}`],
+          },
+        ],
+      },
     },
-    "plugins": [
+    plugins: [
       [
-        "react-native-fbsdk-next",
+        'react-native-fbsdk-next',
         {
-          "appID": "{{META_APP_ID}}",
-          "clientToken": "{{META_CLIENT_TOKEN}}",
-          "displayName": "{{META_DISPLAY_NAME}}",
-          "advertiserIDCollectionEnabled": true,
-          "autoLogAppEventsEnabled": true
-        }
-      ]
-    ]
-  }
-}
+          appID: META_APP_ID,
+          clientToken: META_CLIENT_TOKEN,
+          displayName: META_DISPLAY_NAME,
+          advertiserIDCollectionEnabled: true,
+          autoLogAppEventsEnabled: true,
+        },
+      ],
+    ],
+  },
+};
 ```
 
-### 4.2 Initialize Meta SDK
+### 5.2 Initialize Meta SDK
 
 ```typescript
 import { Settings } from 'react-native-fbsdk-next';
@@ -276,7 +392,7 @@ Settings.setAutoLogAppEventsEnabled(true);
 console.log('[Meta SDK] Initialized');
 ```
 
-### 4.3 Log Meta Events
+### 5.3 Log Meta Events
 
 ```typescript
 import { AppEventsLogger } from 'react-native-fbsdk-next';
@@ -293,9 +409,9 @@ AppEventsLogger.logEvent('deposit', {
 
 ---
 
-## Step 5: AppsFlyer SDK Integration
+## Step 6: AppsFlyer SDK Integration
 
-### 5.1 Create Custom Android Manifest Plugin
+### 6.1 Create Custom Android Manifest Plugin
 
 Create `withCustomAndroidManifest.js` in project root (required for RN 0.76 + Expo 52):
 
@@ -325,31 +441,32 @@ module.exports = function withCustomAndroidManifest(config) {
 };
 ```
 
-### 5.2 Configure app.json
+### 6.2 Configure app.config.js
 
-```json
-{
-  "expo": {
-    "ios": {
-      "infoPlist": {
-        "NSAdvertisingAttributionReportEndpoint": "https://appsflyer-skadnetwork.com/"
-      }
+```javascript
+// app.config.js
+module.exports = {
+  expo: {
+    ios: {
+      infoPlist: {
+        NSAdvertisingAttributionReportEndpoint: 'https://appsflyer-skadnetwork.com/',
+      },
     },
-    "plugins": [
-      "./withCustomAndroidManifest.js",
+    plugins: [
+      './withCustomAndroidManifest.js',
       [
-        "react-native-appsflyer",
+        'react-native-appsflyer',
         {
-          "shouldUseStrictMode": false,
-          "shouldUsePurchaseConnector": false
-        }
-      ]
-    ]
-  }
-}
+          shouldUseStrictMode: false,
+          shouldUsePurchaseConnector: false,
+        },
+      ],
+    ],
+  },
+};
 ```
 
-### 5.3 SKAdNetwork (SKAN) Postback Configuration
+### 6.3 SKAdNetwork (SKAN) Postback Configuration
 
 Add the following to `ios/AppCMSDemo/Info.plist` for iOS 14.5+ privacy-compliant attribution:
 
@@ -363,7 +480,7 @@ This enables:
 - Attribution tracking even when users opt-out of ATT
 - iOS 14.5+ privacy-compliant measurement
 
-### 5.4 Initialize AppsFlyer SDK
+### 6.4 Initialize AppsFlyer SDK
 
 ```typescript
 import appsFlyer from 'react-native-appsflyer';
@@ -399,10 +516,15 @@ appsFlyer.onDeepLink((result) => {
 });
 
 // Initialize AppsFlyer SDK
+// Credentials are loaded from .env via @env module
+import { APPSFLYER_DEV_KEY, APPSFLYER_IOS_APP_ID, APPSFLYER_ANDROID_APP_ID } from '@env';
+
 const appsFlyerConfig = {
-  devKey: '{{APPSFLYER_DEV_KEY}}',
-  isDebug: true, // Set to false for production
-  appId: Platform.OS === 'ios' ? '{{APPSFLYER_IOS_APP_ID}}' : '{{ANDROID_PACKAGE_NAME}}',
+  devKey: APPSFLYER_DEV_KEY,             // From .env: {{APPSFLYER_DEV_KEY}}
+  isDebug: __DEV__,                       // true in dev, false in production
+  appId: Platform.OS === 'ios' 
+    ? APPSFLYER_IOS_APP_ID                // From .env: {{APPSFLYER_IOS_APP_ID}} (e.g., id223556789)
+    : APPSFLYER_ANDROID_APP_ID,           // From .env: {{APPSFLYER_ANDROID_APP_ID}} (e.g., com.appcms.liveapp)
   onInstallConversionDataListener: true,
   onDeepLinkListener: true,
   timeToWaitForATTUserAuthorization: 10,
@@ -415,7 +537,7 @@ appsFlyer.initSdk(
 );
 ```
 
-### 5.5 Log AppsFlyer Events
+### 6.5 Log AppsFlyer Events
 
 ```typescript
 import appsFlyer from 'react-native-appsflyer';
@@ -432,7 +554,7 @@ await appsFlyer.logEvent('deposit', {
 
 ---
 
-## Step 6: Unified Analytics Service
+## Step 7: Unified Analytics Service
 
 Create a single service to fire events to all platforms:
 
@@ -645,7 +767,7 @@ export default AnalyticsEvents;
 
 ---
 
-## Step 7: App Initialization
+## Step 8: App Initialization
 
 ### Complete App.tsx
 
@@ -736,10 +858,15 @@ export default function App() {
       // ==========================================
       // STEP 4: Initialize AppsFlyer SDK
       // ==========================================
+      // Import credentials from .env at top of file:
+      // import { APPSFLYER_DEV_KEY, APPSFLYER_IOS_APP_ID, APPSFLYER_ANDROID_APP_ID } from '@env';
+      
       const appsFlyerConfig = {
-        devKey: '{{APPSFLYER_DEV_KEY}}',
-        isDebug: true, // Set to false for production
-        appId: Platform.OS === 'ios' ? '{{APPSFLYER_IOS_APP_ID}}' : '{{ANDROID_PACKAGE_NAME}}',
+        devKey: APPSFLYER_DEV_KEY,           // {{APPSFLYER_DEV_KEY}}
+        isDebug: __DEV__,                     // true in dev, false in production
+        appId: Platform.OS === 'ios' 
+          ? APPSFLYER_IOS_APP_ID              // {{APPSFLYER_IOS_APP_ID}} (e.g., id223556789)
+          : APPSFLYER_ANDROID_APP_ID,         // {{APPSFLYER_ANDROID_APP_ID}} (e.g., com.appcms.liveapp)
         onInstallConversionDataListener: true,
         onDeepLinkListener: true,
         timeToWaitForATTUserAuthorization: 10,
@@ -797,9 +924,9 @@ const styles = StyleSheet.create({
 
 ---
 
-## Step 8: Build and Run
+## Step 9: Build and Run
 
-### 8.1 Rebuild the native app
+### 9.1 Rebuild the native app
 
 ```bash
 # iOS
@@ -809,7 +936,7 @@ npx expo run:ios --device "iPhone 16 Pro"
 npx expo run:android
 ```
 
-### 8.2 Start Metro bundler
+### 9.2 Start Metro bundler
 
 ```bash
 npx expo start --dev-client
@@ -1156,14 +1283,19 @@ appsFlyer.onDeepLink((result) => {
 ```
 project/
 ├── App.tsx                          # Main app with SDK initialization
-├── app.json                         # Expo config with all SDK plugins
+├── app.config.js                    # Dynamic Expo config (reads .env)
+├── babel.config.js                  # Babel config with dotenv plugin
+├── .env                             # Environment variables (gitignored)
+├── .env.example                     # Template for environment variables
 ├── package.json                     # Dependencies
 ├── withCustomAndroidManifest.js     # AppsFlyer Android fix
-├── GoogleService-Info.plist         # Firebase iOS config
-├── google-services.json             # Firebase Android config
+├── GoogleService-Info.plist         # Firebase iOS config (gitignored)
+├── google-services.json             # Firebase Android config (gitignored)
 └── src/
-    └── services/
-        └── analytics.ts             # Unified analytics service
+    ├── services/
+    │   └── analytics.ts             # Unified analytics service
+    └── types/
+        └── env.d.ts                 # TypeScript types for @env module
 ```
 
 ---
@@ -1256,7 +1388,28 @@ Replace these placeholders throughout the guide with your actual values:
 | `{{META_CLIENT_TOKEN}}` | Facebook/Meta Client Token | Meta Developer Console → Settings → Advanced |
 | `{{META_DISPLAY_NAME}}` | App Display Name for Meta | Meta Developer Console → Settings → Basic |
 | `{{APPSFLYER_DEV_KEY}}` | AppsFlyer Developer Key | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) → Configuration → App Settings |
-| `{{APPSFLYER_IOS_APP_ID}}` | iOS App Store ID | App Store Connect (numeric ID, e.g., `1234567890`) |
+| `{{APPSFLYER_IOS_APP_ID}}` | iOS App Store ID | App Store Connect (format: `id123456789`) |
+| `{{APPSFLYER_ANDROID_APP_ID}}` | Android App ID for AppsFlyer | Same as `{{ANDROID_PACKAGE_NAME}}` |
+
+### Environment Variables (.env file)
+
+All credentials are stored in a `.env` file at the project root:
+
+```env
+# App Identifiers
+IOS_BUNDLE_ID=com.yourcompany.app
+ANDROID_PACKAGE_NAME=com.yourcompany.app
+
+# Meta (Facebook) SDK
+META_APP_ID=your_meta_app_id
+META_CLIENT_TOKEN=your_meta_client_token
+META_DISPLAY_NAME=Your App Name
+
+# AppsFlyer SDK
+APPSFLYER_DEV_KEY=your_appsflyer_dev_key
+APPSFLYER_IOS_APP_ID=id123456789
+APPSFLYER_ANDROID_APP_ID=com.yourcompany.app
+```
 
 ### Example Values (Demo App)
 
@@ -1264,9 +1417,10 @@ Replace these placeholders throughout the guide with your actual values:
 |-------------|------------|
 | `{{IOS_BUNDLE_ID}}` | `com.cloudhost.demo` |
 | `{{ANDROID_PACKAGE_NAME}}` | `com.cloudhost.demo` |
-| `{{META_APP_ID}}` | `` |
-| `{{META_CLIENT_TOKEN}}` | `` |
+| `{{META_APP_ID}}` | `(see .env)` |
+| `{{META_CLIENT_TOKEN}}` | `(see .env)` |
 | `{{META_DISPLAY_NAME}}` | `AppCMS Demo` |
-| `{{APPSFLYER_DEV_KEY}}` | `` |
-| `{{APPSFLYER_IOS_APP_ID}}` | `` |
+| `{{APPSFLYER_DEV_KEY}}` | `(see .env)` |
+| `{{APPSFLYER_IOS_APP_ID}}` | `id223556789` |
+| `{{APPSFLYER_ANDROID_APP_ID}}` | `com.appcms.liveapp` |
 
