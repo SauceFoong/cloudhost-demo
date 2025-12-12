@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { requestTrackingPermissionsAsync, getTrackingPermissionsAsync } from 'expo-tracking-transparency';
 import { Settings } from 'react-native-fbsdk-next';
+import appsFlyer from 'react-native-appsflyer';
 import AppNavigator from './src/navigation/AppNavigator';
 import { colors, fontSize, fontWeight, spacing } from './src/constants/theme';
 
@@ -45,6 +46,62 @@ export default function App() {
       // Enable verbose logging for debugging
       Settings.setAutoLogAppEventsEnabled(true);
       console.log('[Meta SDK] Initialized with auto-log enabled');
+
+      // Initialize AppsFlyer SDK
+      // Note: For iOS, appId must be the App Store numeric ID (e.g., "123456789")
+      // Using a placeholder for development - replace with real App Store ID when published
+      // Set up AppsFlyer Conversion Data Listener
+      // This tells you if the user came from paid ads vs organic install
+      appsFlyer.onInstallConversionData((result) => {
+        const data = result?.data;
+        if (data) {
+          console.log('[AppsFlyer] Conversion Data:', JSON.stringify(data));
+          
+          const status = data.af_status;
+          if (status === 'Organic') {
+            console.log('[AppsFlyer] Organic install - user found app naturally');
+            // Business logic for organic installs (e.g., standard onboarding)
+          } else if (status === 'Non-organic') {
+            console.log('[AppsFlyer] Non-organic install from:', data.media_source);
+            console.log('[AppsFlyer] Campaign:', data.campaign);
+            // Business logic for paid installs (e.g., personalized content based on ad)
+          }
+        }
+      });
+
+      // Set up AppsFlyer Deep Link Listener
+      // This handles when users open the app via a deep link (from ads, emails, etc.)
+      appsFlyer.onDeepLink((result) => {
+        console.log('[AppsFlyer] Deep Link received:', JSON.stringify(result));
+        
+        if (result?.deepLinkStatus === 'FOUND') {
+          const deepLinkValue = result?.data?.deep_link_value;
+          console.log('[AppsFlyer] Deep Link Value:', deepLinkValue);
+          // Handle navigation based on deep link value
+          // e.g., navigate to specific screen or show specific content
+        }
+      });
+
+      // AppsFlyer SDK Configuration
+      const appsFlyerConfig = {
+        devKey: 'gvQv7sdN7Tj6kvj8MN4GY4',
+        isDebug: true,
+        appId: Platform.OS === 'ios' ? 'id6739326850' : 'com.cloudhost.demo',
+        onInstallConversionDataListener: true,
+        onDeepLinkListener: true,
+        timeToWaitForATTUserAuthorization: 10,
+      };
+
+      appsFlyer.initSdk(
+        appsFlyerConfig,
+        (result) => {
+          console.log('[AppsFlyer] SDK initialized:', result);
+        },
+        (error) => {
+          // Log warning but don't block app - AppsFlyer may fail in dev without valid App Store ID
+          console.warn('[AppsFlyer] SDK init warning:', error?.message || error || 'Unknown error');
+        }
+      );
 
       setIsReady(true);
     } catch (error) {

@@ -55,7 +55,7 @@ export default function SignupScreen() {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      await AnalyticsEvents.logUserSignup();
+      await AnalyticsEvents.logUserSignUp(email);
       await StorageService.markUserSignedUp();
       navigation.navigate('Deposit');
     } catch (error) {

@@ -1,35 +1,37 @@
 # AppCMS Demo App
 
-A React Native demo app matching client's production stack with Firebase Analytics and Meta SDK integration.
+A React Native demo app with Firebase Analytics, Meta SDK, and AppsFlyer integration for analytics tracking.
 
 ## Tech Stack
 
 | Component | Version |
 |-----------|---------|
 | React Native | 0.76.9 |
-| Expo SDK | 52.0.46 |
+| Expo SDK | 52.0.46 (Bare workflow) |
 | Navigation | React Navigation v6.0.2 |
 | Package Manager | Yarn |
-| iOS Bundle ID | com.cloudhost.demo |
-| Android Package | com.cloudhost.demo |
 
-## Analytics Events (Dual Tracking)
+## SDK Integrations
 
-Events are fired to **both Firebase Analytics and Meta SDK**:
+| SDK | Purpose |
+|-----|---------|
+| Firebase Analytics | Event tracking & attribution |
+| Meta (Facebook) SDK | Ad attribution & event tracking |
+| AppsFlyer | Mobile attribution & deep linking |
+| expo-crypto | SHA-256 email hashing |
+| expo-tracking-transparency | iOS ATT prompt |
+
+## Analytics Events
+
+Events are fired to **Firebase Analytics**, **Meta SDK**, and **AppsFlyer**:
 
 | Event | Parameters | Description |
 |-------|------------|-------------|
 | `app_install` | - | First app launch |
-| `user_signup` | - | User registration |
-| `deposit` | value, currency (ISO 4217) | Fund deposit |
-| `create_instance` | product_id | Server instance creation |
-
-## Features
-
-- **iOS ATT Prompt** - App Tracking Transparency for iOS 14+
-- **React Navigation v6** - Bottom tabs with screens staying mounted
-- **useFocusEffect** - Screen view events on tab switch (not just mount)
-- **Meta SDK** - App ID: 1485851395848055
+| `user_sign_up` | `hashed_email` | User registration |
+| `deposit` | `value`, `currency`, `hashed_email` | Fund deposit |
+| `create_instance` | `product_id`, `hashed_email` | Server instance creation |
+| `screen_view` | `screen_name` | Screen navigation |
 
 ## Setup
 
@@ -39,14 +41,27 @@ Events are fired to **both Firebase Analytics and Meta SDK**:
 yarn install
 ```
 
-### 2. Add Firebase Config Files
+### 2. Configure Credentials
 
-- `google-services.json` → project root (Android)
+Replace placeholders in `app.json` and `App.tsx`:
+
+| Placeholder | Description | Where to Find |
+|-------------|-------------|---------------|
+| `{{IOS_BUNDLE_ID}}` | iOS Bundle Identifier | Apple Developer Portal |
+| `{{ANDROID_PACKAGE_NAME}}` | Android Package Name | `android/app/build.gradle` |
+| `{{META_APP_ID}}` | Facebook App ID | [Meta Developer Console](https://developers.facebook.com/) |
+| `{{META_CLIENT_TOKEN}}` | Facebook Client Token | Meta Console → Settings → Advanced |
+| `{{APPSFLYER_DEV_KEY}}` | AppsFlyer Dev Key | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) |
+| `{{APPSFLYER_IOS_APP_ID}}` | iOS App Store ID | App Store Connect |
+
+### 3. Add Firebase Config Files
+
+Download from [Firebase Console](https://console.firebase.google.com/):
+
 - `GoogleService-Info.plist` → project root (iOS)
+- `google-services.json` → project root (Android)
 
-### 3. Update Meta SDK Client Token
-
-Edit `app.json` and replace `YOUR_CLIENT_TOKEN` with your actual Meta client token.
+> ⚠️ These files are gitignored. Each developer needs their own copies.
 
 ### 4. Build and Run
 
@@ -68,19 +83,20 @@ npx expo run:android
 │   │   └── BottomTabNavigator.tsx # Tab navigator
 │   ├── screens/
 │   │   ├── WelcomeScreen.tsx      # Home tab (app_install)
-│   │   ├── SignupScreen.tsx       # Signup flow (user_signup)
+│   │   ├── SignupScreen.tsx       # Signup flow (user_sign_up)
 │   │   ├── DepositScreen.tsx      # Add funds (deposit)
 │   │   ├── CreateInstanceScreen.tsx # Create server (create_instance)
 │   │   ├── ServersScreen.tsx      # Servers tab
 │   │   └── ProfileScreen.tsx      # Profile tab
 │   ├── services/
-│   │   ├── analytics.ts           # Firebase + Meta dual tracking
+│   │   ├── analytics.ts           # Unified analytics (Firebase + Meta + AppsFlyer)
 │   │   └── storage.ts             # AsyncStorage utilities
 │   └── constants/
 │       ├── theme.ts
 │       └── products.ts
-├── App.tsx                         # Entry with ATT prompt
-├── app.json                        # Expo config
+├── App.tsx                         # Entry with ATT + SDK initialization
+├── app.json                        # Expo config with SDK plugins
+├── withCustomAndroidManifest.js    # AppsFlyer Android fix
 └── package.json
 ```
 
@@ -89,9 +105,9 @@ npx expo run:android
 ```typescript
 import { AnalyticsEvents } from './src/services/analytics';
 
-// All events fire to both Firebase and Meta
+// All events fire to Firebase, Meta, and AppsFlyer
 await AnalyticsEvents.logAppInstall();
-await AnalyticsEvents.logUserSignup();
+await AnalyticsEvents.logUserSignUp('user@example.com'); // Email is SHA-256 hashed
 await AnalyticsEvents.logDeposit(100, 'USD');
 await AnalyticsEvents.logCreateInstance('prod_standard_002');
 
@@ -113,8 +129,30 @@ useFocusEffect(
 );
 ```
 
+## Privacy & Hashing
+
+User emails are hashed using **SHA-256** before being sent to analytics:
+
+```typescript
+// Input: user@example.com
+// Output: b4c9a289323b21a0 (first 16 chars of SHA-256 hash)
+```
+
+- ✅ GDPR compliant
+- ✅ Cannot be reversed
+- ✅ Consistent across platforms
+
+## Debugging
+
+| Platform | How to Debug |
+|----------|--------------|
+| Firebase | Xcode scheme → Add `-FIRAnalyticsDebugEnabled` → Check DebugView in Firebase Console |
+| Meta | [Meta Events Manager](https://business.facebook.com/events_manager) → Test Events |
+| AppsFlyer | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) → Debug → Device Logs |
+
 ## Notes
 
-- Uses Expo Dev Client (not Expo Go) for native modules
-- ATT prompt shown on first launch before any tracking
-- Meta SDK initialized after ATT response
+- Uses **Expo Dev Client** (not Expo Go) for native modules
+- **ATT prompt** shown on first launch before any tracking
+- **SKAdNetwork** postback enabled for iOS 14.5+ attribution
+- Set `isDebug: false` in AppsFlyer config for production builds

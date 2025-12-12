@@ -1,33 +1,78 @@
-import analytics from '@react-native-firebase/analytics';
+import { getAnalytics, logEvent, logScreenView } from '@react-native-firebase/analytics';
 import { AppEventsLogger } from 'react-native-fbsdk-next';
+import appsFlyer from 'react-native-appsflyer';
+import * as Crypto from 'expo-crypto';
 
 /**
  * Unified Analytics Service
  * 
- * Fires events to both Firebase Analytics and Meta (Facebook) SDK
+ * Fires events to Firebase Analytics, Meta (Facebook) SDK, and AppsFlyer
  * 
  * Events:
  * 1. app_install - First app launch
- * 2. user_signup - User registration
- * 3. deposit - Fund deposit (value, currency)
- * 4. create_instance - Server instance creation (product_id)
+ * 2. user_sign_up - User registration (with hashed email)
+ * 3. deposit - Fund deposit (value, currency, hashed_email)
+ * 4. create_instance - Server instance creation (product_id, hashed_email)
  */
 
-// Helper to log to both platforms
-const logToBothPlatforms = async (
+// Store the current user's hashed email for use across events
+let currentHashedEmail: string | null = null;
+
+/**
+ * Hash email using SHA-256 (industry standard, GDPR compliant)
+ * Uses expo-crypto for native hashing
+ * Returns first 16 characters of the hash for readability
+ * 
+ * @see https://docs.expo.dev/versions/latest/sdk/crypto/
+ */
+const hashEmailSHA256 = async (email: string): Promise<string> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  const digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    normalizedEmail
+  );
+  // Return first 16 characters of SHA-256 hash
+  return digest.substring(0, 16);
+};
+
+/**
+ * Set the current user's email (will be hashed and stored)
+ * Call this after user signs up or logs in
+ */
+export const setUserEmail = async (email: string): Promise<void> => {
+  currentHashedEmail = await hashEmailSHA256(email);
+  console.log('[Analytics] User email set (hashed):', currentHashedEmail);
+};
+
+/**
+ * Clear the current user's email (call on logout)
+ */
+export const clearUserEmail = (): void => {
+  currentHashedEmail = null;
+  console.log('[Analytics] User email cleared');
+};
+
+/**
+ * Get the current hashed email
+ */
+export const getHashedEmail = (): string | null => currentHashedEmail;
+
+// Helper to log to all platforms (Firebase, Meta, AppsFlyer)
+const logToAllPlatforms = async (
   eventName: string,
   params?: Record<string, unknown>
 ): Promise<void> => {
+  // Firebase Analytics
   try {
-    // Firebase Analytics
-    await analytics().logEvent(eventName, params);
+    const analytics = getAnalytics();
+    await logEvent(analytics, eventName, params);
     console.log(`[Firebase] ${eventName} event fired`, params || '');
   } catch (error) {
     console.error(`[Firebase] Error firing ${eventName}:`, error);
   }
 
+  // Meta SDK
   try {
-    // Meta SDK
     if (params) {
       AppEventsLogger.logEvent(eventName, params as Record<string, string | number>);
     } else {
@@ -37,6 +82,14 @@ const logToBothPlatforms = async (
   } catch (error) {
     console.error(`[Meta] Error firing ${eventName}:`, error);
   }
+
+  // AppsFlyer
+  try {
+    await appsFlyer.logEvent(eventName, params || {});
+    console.log(`[AppsFlyer] ${eventName} event fired`, params || '');
+  } catch (error) {
+    console.error(`[AppsFlyer] Error firing ${eventName}:`, error);
+  }
 };
 
 export const AnalyticsEvents = {
@@ -45,15 +98,22 @@ export const AnalyticsEvents = {
    * Fired on first app launch after installation
    */
   logAppInstall: async (): Promise<void> => {
-    await logToBothPlatforms('app_install');
+    await logToAllPlatforms('app_install');
   },
 
   /**
-   * Event 2: user_signup
+   * Event 2: user_sign_up
    * Fired when user completes signup
+   * @param email - User's email address (will be hashed using SHA-256)
    */
-  logUserSignup: async (): Promise<void> => {
-    await logToBothPlatforms('user_signup');
+  logUserSignUp: async (email: string): Promise<void> => {
+    const hashedEmail = await hashEmailSHA256(email);
+    // Store for future events
+    currentHashedEmail = hashedEmail;
+    
+    await logToAllPlatforms('user_sign_up', {
+      hashed_email: hashedEmail,
+    });
   },
 
   /**
@@ -61,11 +121,20 @@ export const AnalyticsEvents = {
    * Fired when user makes a deposit
    * @param value - Deposit amount
    * @param currency - ISO 4217 currency code
+   * @param email - Optional: User's email (if not already set via setUserEmail)
    */
-  logDeposit: async (value: number, currency: string): Promise<void> => {
-    await logToBothPlatforms('deposit', {
+  logDeposit: async (value: number, currency: string, email?: string): Promise<void> => {
+    let hashedEmail = currentHashedEmail;
+    
+    // If email provided, hash it; otherwise use stored hash
+    if (email) {
+      hashedEmail = await hashEmailSHA256(email);
+    }
+    
+    await logToAllPlatforms('deposit', {
       value,
       currency: currency.toUpperCase(),
+      ...(hashedEmail && { hashed_email: hashedEmail }),
     });
   },
 
@@ -73,10 +142,19 @@ export const AnalyticsEvents = {
    * Event 4: create_instance
    * Fired when user creates a server instance
    * @param productId - Product identifier
+   * @param email - Optional: User's email (if not already set via setUserEmail)
    */
-  logCreateInstance: async (productId: string): Promise<void> => {
-    await logToBothPlatforms('create_instance', {
+  logCreateInstance: async (productId: string, email?: string): Promise<void> => {
+    let hashedEmail = currentHashedEmail;
+    
+    // If email provided, hash it; otherwise use stored hash
+    if (email) {
+      hashedEmail = await hashEmailSHA256(email);
+    }
+    
+    await logToAllPlatforms('create_instance', {
       product_id: productId,
+      ...(hashedEmail && { hashed_email: hashedEmail }),
     });
   },
 
@@ -84,8 +162,10 @@ export const AnalyticsEvents = {
    * Log screen view - for React Navigation v6 with useFocusEffect
    */
   logScreenView: async (screenName: string): Promise<void> => {
+    // Firebase Analytics
     try {
-      await analytics().logScreenView({
+      const analytics = getAnalytics();
+      await logScreenView(analytics, {
         screen_name: screenName,
         screen_class: screenName,
       });
@@ -94,11 +174,20 @@ export const AnalyticsEvents = {
       console.error('[Firebase] Error logging screen view:', error);
     }
 
+    // Meta SDK
     try {
       AppEventsLogger.logEvent('screen_view', { screen_name: screenName });
       console.log(`[Meta] Screen view: ${screenName}`);
     } catch (error) {
       console.error('[Meta] Error logging screen view:', error);
+    }
+
+    // AppsFlyer
+    try {
+      await appsFlyer.logEvent('screen_view', { screen_name: screenName });
+      console.log(`[AppsFlyer] Screen view: ${screenName}`);
+    } catch (error) {
+      console.error('[AppsFlyer] Error logging screen view:', error);
     }
   },
 };
