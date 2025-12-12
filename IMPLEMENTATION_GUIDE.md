@@ -469,6 +469,28 @@ const hashEmailSHA256 = async (email: string): Promise<string> => {
   return digest.substring(0, 16);
 };
 
+/**
+ * Set the current user's email (will be hashed and stored)
+ * Call this after user signs up or logs in
+ */
+export const setUserEmail = async (email: string): Promise<void> => {
+  currentHashedEmail = await hashEmailSHA256(email);
+  console.log('[Analytics] User email set (hashed):', currentHashedEmail);
+};
+
+/**
+ * Clear the current user's email (call on logout)
+ */
+export const clearUserEmail = (): void => {
+  currentHashedEmail = null;
+  console.log('[Analytics] User email cleared');
+};
+
+/**
+ * Get the current hashed email
+ */
+export const getHashedEmail = (): string | null => currentHashedEmail;
+
 // Helper to log to all platforms
 const logToAllPlatforms = async (
   eventName: string,
@@ -769,6 +791,27 @@ npx expo start --dev-client
 2. Select your app (ID: `{{META_APP_ID}}`)
 3. Click **Test Events** for real-time events
 
+**⚠️ To See Custom Parameters:**
+
+Meta requires you to **register custom parameters** before they appear in the dashboard:
+
+1. Go to Events Manager → Select your app
+2. Click the **gear icon (⚙️)** → **Configure Events** or **Manage Parameters**
+3. Add your custom parameters:
+   - `hashed_email` (String)
+   - `value` (Number)
+   - `currency` (String)
+   - `product_id` (String)
+4. Wait 24-48 hours for parameters to appear in analytics (Test Events shows immediately)
+
+**Alternative:** Use Meta's standard parameters for automatic visibility:
+
+| Your Parameter | Meta Standard Parameter |
+|----------------|------------------------|
+| `value` | `_valueToSum` or `fb_content_value` |
+| `currency` | `fb_currency` |
+| `product_id` | `fb_content_id` |
+
 ### AppsFlyer Dashboard
 
 1. Go to [AppsFlyer Dashboard](https://hq1.appsflyer.com/)
@@ -1043,6 +1086,36 @@ const hashEmailSHA256 = async (email: string): Promise<string> => {
 - ✅ **Consistent** - Same email always produces same hash
 - ✅ **Industry Standard** - SHA-256 is widely trusted
 - ✅ **Cross-Platform** - Works on iOS and Android
+
+### Utility Functions
+
+The analytics service provides utility functions for managing user email state:
+
+```typescript
+import { 
+  setUserEmail, 
+  clearUserEmail, 
+  getHashedEmail 
+} from './src/services/analytics';
+
+// Set user email after login (will be hashed and stored)
+await setUserEmail('user@example.com');
+// → Stores hashed email for use in subsequent events
+
+// Get current hashed email (useful for debugging)
+const hashedEmail = getHashedEmail();
+console.log('Current hashed email:', hashedEmail);
+
+// Clear user email on logout
+clearUserEmail();
+// → All future events won't include hashed_email automatically
+```
+
+| Function | Description | Usage |
+|----------|-------------|-------|
+| `setUserEmail(email)` | Hash and store user's email | Call after login/signup |
+| `getHashedEmail()` | Get current stored hashed email | Debugging or display |
+| `clearUserEmail()` | Clear stored email | Call on logout |
 
 ---
 
