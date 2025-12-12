@@ -43,18 +43,43 @@ Events are fired to **Firebase Analytics**, **Meta SDK**, and **AppsFlyer**:
 yarn install
 ```
 
-### 2. Configure Credentials
+### 2. Configure Environment Variables
 
-Replace placeholders in `app.json` and `App.tsx`:
+Copy the example environment file and fill in your credentials:
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `{{IOS_BUNDLE_ID}}` | iOS Bundle Identifier | Apple Developer Portal |
-| `{{ANDROID_PACKAGE_NAME}}` | Android Package Name | `android/app/build.gradle` |
-| `{{META_APP_ID}}` | Facebook App ID | [Meta Developer Console](https://developers.facebook.com/) |
-| `{{META_CLIENT_TOKEN}}` | Facebook Client Token | Meta Console → Settings → Advanced |
-| `{{APPSFLYER_DEV_KEY}}` | AppsFlyer Dev Key | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) |
-| `{{APPSFLYER_IOS_APP_ID}}` | iOS App Store ID | App Store Connect |
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your values:
+
+```env
+# App Identifiers
+IOS_BUNDLE_ID=com.yourcompany.app
+ANDROID_PACKAGE_NAME=com.yourcompany.app
+
+# Meta (Facebook) SDK
+META_APP_ID=your_meta_app_id
+META_CLIENT_TOKEN=your_meta_client_token
+META_DISPLAY_NAME=Your App Name
+
+# AppsFlyer SDK
+APPSFLYER_DEV_KEY=your_appsflyer_dev_key
+APPSFLYER_IOS_APP_ID=your_app_store_id
+APPSFLYER_ANDROID_APP_ID=your_android_app_id
+```
+
+| Variable | Description | Where to Find |
+|----------|-------------|---------------|
+| `IOS_BUNDLE_ID` | iOS Bundle Identifier | Apple Developer Portal |
+| `ANDROID_PACKAGE_NAME` | Android Package Name | `android/app/build.gradle` |
+| `META_APP_ID` | Facebook App ID | [Meta Developer Console](https://developers.facebook.com/) |
+| `META_CLIENT_TOKEN` | Facebook Client Token | Meta Console → Settings → Advanced |
+| `APPSFLYER_DEV_KEY` | AppsFlyer Dev Key | [AppsFlyer Dashboard](https://hq1.appsflyer.com/) |
+| `APPSFLYER_IOS_APP_ID` | iOS App Store ID (numeric) | App Store Connect |
+| `APPSFLYER_ANDROID_APP_ID` | Android App ID for AppsFlyer | AppsFlyer Dashboard |
+
+> ⚠️ `.env` is gitignored. Each developer needs their own copy.
 
 ### 3. Add Firebase Config Files
 
@@ -79,26 +104,33 @@ npx expo run:android
 
 ```
 /
+├── .env                            # Environment variables (gitignored)
+├── .env.example                    # Template for environment variables
+├── app.config.js                   # Dynamic Expo config (reads from .env)
+├── App.tsx                         # Entry with ATT + SDK initialization
+├── babel.config.js                 # Babel config with dotenv plugin
+├── withCustomAndroidManifest.js    # AppsFlyer Android fix
+├── GoogleService-Info.plist        # Firebase iOS config (gitignored)
+├── google-services.json            # Firebase Android config (gitignored)
 ├── src/
 │   ├── navigation/
-│   │   ├── AppNavigator.tsx       # Stack navigator
-│   │   └── BottomTabNavigator.tsx # Tab navigator
+│   │   ├── AppNavigator.tsx        # Stack navigator
+│   │   └── BottomTabNavigator.tsx  # Tab navigator
 │   ├── screens/
-│   │   ├── WelcomeScreen.tsx      # Home tab (app_install)
-│   │   ├── SignupScreen.tsx       # Signup flow (user_sign_up)
-│   │   ├── DepositScreen.tsx      # Add funds (deposit)
+│   │   ├── WelcomeScreen.tsx       # Home tab (app_install)
+│   │   ├── SignupScreen.tsx        # Signup flow (user_sign_up)
+│   │   ├── DepositScreen.tsx       # Add funds (deposit)
 │   │   ├── CreateInstanceScreen.tsx # Create server (create_instance)
-│   │   ├── ServersScreen.tsx      # Servers tab
-│   │   └── ProfileScreen.tsx      # Profile tab
+│   │   ├── ServersScreen.tsx       # Servers tab
+│   │   └── ProfileScreen.tsx       # Profile tab
 │   ├── services/
-│   │   ├── analytics.ts           # Unified analytics (Firebase + Meta + AppsFlyer)
-│   │   └── storage.ts             # AsyncStorage utilities
+│   │   ├── analytics.ts            # Unified analytics (Firebase + Meta + AppsFlyer)
+│   │   └── storage.ts              # AsyncStorage utilities
+│   ├── types/
+│   │   └── env.d.ts                # TypeScript types for @env module
 │   └── constants/
 │       ├── theme.ts
 │       └── products.ts
-├── App.tsx                         # Entry with ATT + SDK initialization
-├── app.json                        # Expo config with SDK plugins
-├── withCustomAndroidManifest.js    # AppsFlyer Android fix
 └── package.json
 ```
 

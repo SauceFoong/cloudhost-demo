@@ -8,6 +8,7 @@ import appsFlyer from 'react-native-appsflyer';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AnalyticsEvents } from './src/services/analytics';
 import { colors, fontSize, fontWeight, spacing } from './src/constants/theme';
+import { APPSFLYER_DEV_KEY, APPSFLYER_IOS_APP_ID, APPSFLYER_ANDROID_APP_ID } from '@env';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -97,11 +98,11 @@ export default function App() {
         }
       });
 
-      // AppsFlyer SDK Configuration
+      // AppsFlyer SDK Configuration (credentials from .env)
       const appsFlyerConfig = {
-        devKey: 'gvQv7sdN7Tj6kvj8MN4GY4',
-        isDebug: true,
-        appId: Platform.OS === 'ios' ? 'id6739326850' : 'com.cloudhost.demo',
+        devKey: APPSFLYER_DEV_KEY,
+        isDebug: __DEV__, // true in development, false in production
+        appId: Platform.OS === 'ios' ? APPSFLYER_IOS_APP_ID : APPSFLYER_ANDROID_APP_ID,
         onInstallConversionDataListener: true,
         onDeepLinkListener: true,
         timeToWaitForATTUserAuthorization: 10,
